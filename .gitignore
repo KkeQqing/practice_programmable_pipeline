@@ -1,0 +1,50 @@
+# 忽略Visual Studio 2022生成的文件
+*.sln.cache
+*.VC.db
+*.suo
+*.opendb
+
+# 忽略编译输出目录
+Debug/
+Release/
+x64/
+x86/
+
+# 忽略预编译头文件和临时文件
+*.pch
+*.tlog
+*.ipdb
+*.iobj
+
+# 忽略GLFW库自带的DLL等
+glfw3.dll
+*.lib
+
+# 忽略用户特定设置
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+# 忽略其他工具生成的文件
+*.cache
+*.diff
+*.orig
+*~
+
+# 忽略CMake生成的文件（如果你使用CMake）
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+*.dir/
+
+# 忽略日志文件、数据库文件等
+*.log
+*.db
+
+# 忽略环境配置文件
+.env
+.DS_Store
+Thumbs.db
