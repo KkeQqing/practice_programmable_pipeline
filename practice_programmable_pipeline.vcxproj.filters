@@ -21,6 +21,15 @@
     <ClCompile Include="..\..\Environmennt\GLAD\src\glad.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="SPH.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Height Field.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="stable_fluids.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
