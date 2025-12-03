@@ -24,7 +24,7 @@
     <ClCompile Include="SPH.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Height Field.cpp">
+    <ClCompile Include="height_field.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="stable_fluids.cpp">

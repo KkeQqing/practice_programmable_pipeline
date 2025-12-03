@@ -126,7 +126,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Environmennt\GLAD\src\glad.c" />
-    <ClCompile Include="Height Field.cpp" />
+    <ClCompile Include="height_field.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SPH.cpp" />
     <ClCompile Include="stable_fluids.cpp" />
