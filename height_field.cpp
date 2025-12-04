@@ -1,352 +1,422 @@
-//// water_heightfield.cpp
-//#include <glad/glad.h>
-//#include <GLFW/glfw3.h>
-//#include <glm/glm.hpp>
-//#include <glm/gtc/matrix_transform.hpp>
-//#include <glm/gtc/type_ptr.hpp>
-//#include <iostream>
-//#include <vector>
-//#include <cmath>
-//
-//// ¶¨ÒåË®ÃæÍø¸ñ·Ö±æÂÊ£º128¡Á128 ¸ö¶¥µã
-//const int GRID_WIDTH = 128;  // Íø¸ñ¿í¶È
-//const int GRID_HEIGHT = 128; // Íø¸ñ¸ß¶È
-//const float GRID_SIZE = 1.0f; // Ã¿¸ö¸ñ×ÓµÄÎïÀí³ß´ç£¨Ã×£©,ÓÃÓÚäÖÈ¾ºÍ¼ÆËã
-//
-//// ²¨¶¯²ÎÊı
-//const float DAMPING = 0.995f; // ×èÄáÏµÊı,Ä£ÄâÄÜÁ¿ËğÊ§.Ã¿Ö¡¶Ô²¨ÀË¸ß¶È³ËÒÔ¸ÃÖµ£¬Ä£ÄâË®µÄÕ³ÖÍ×èÁ¦£¨ÄÜÁ¿Ë¥¼õ£©¡£ÖµÔ½½Ó½ü 1£¬²¨ÀËË¥¼õÔ½Âı¡£
-//const float WAVE_SPEED = 2.0f; // ²¨ËÙ,²¨ÔÚË®ÃæÉÏ´«²¥µÄËÙ¶È£¨µ¥Î»£ºÃ×/Ãë£©
-//const float TIME_STEP = 1.0f / 60.0f; // Ê±¼ä²½³¤,Ä£ÄâÖ¡ÂÊ60FPS
-//
-//// Ë®Ãæ¸ß¶È³¡
-//float height[GRID_HEIGHT][GRID_WIDTH] = { 0 }; // µ±Ç°Ë®Ãæ¸ß¶È
-//float prev_height[GRID_HEIGHT][GRID_WIDTH] = { 0 }; // ÉÏÒ»Ö¡¸ß¶È
-//
-//// äÖÈ¾Êı¾İ
-//GLuint VAO, VBO, EBO; // ¶¥µãÊı×é¶ÔÏó£¨·â×°¶¥µãÊôĞÔ£©£¬¶¥µã»º³å¶ÔÏó£¨´¢´æ¶¥µãÎ»ÖÃ£©£¬Ë÷Òı»º³å¶ÔÏó£¨´æ´¢Èı½ÇĞÎË÷Òı£©
-//GLuint shaderProgram; // ×ÅÉ«Æ÷³ÌĞò
-//
-//// ÉãÏñ»ú
-//glm::vec3 cameraPos = glm::vec3(0.0f, 20.0f, 30.0f);
-//glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); 
-//glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-//// Êó±ê¿ØÖÆ
-//bool firstMouse = true; // ÊÇ·ñÊ×´ÎÒÆ¶¯Êó±ê
-//float yaw = -90.0f, pitch = -20.0f;
-//float lastX = 400, lastY = 300;
-//float movementSpeed = 5.0f; // ÉãÏñ»úÒÆ¶¯ËÙ¶È
-//float mouseSensitivity = 0.1f; // Êó±êÁéÃô¶È
-//bool rightMousePressed = false; // ÓÒ¼ü°´ÏÂ±êÖ¾
-//
-//// Êó±êÈÅ¶¯Î»ÖÃ
-//int disturbX = -1, disturbY = -1; // Êó±êÈÅ¶¯Î»ÖÃ£¬-1±íÊ¾ÎŞÈÅ¶¯
-//
-//// --- Shader Sources ---
-//// ¶¥µã×ÅÉ«Æ÷
-//const char* vertexShaderSource = R"( 
-//#version 330 core
-//layout (location = 0) in vec3 aPos;
-//uniform mat4 model;
-//uniform mat4 view;
-//uniform mat4 projection;
-//uniform sampler2D heightMap; 
-//out vec3 Normal;
-//out vec3 FragPos;
-//
-//void main() {
-//    vec4 worldPos = model * vec4(aPos, 1.0);
-//    FragPos = worldPos.xyz;
-//    gl_Position = projection * view * worldPos;
-//
-//    // ¼òµ¥·¨Ïß
-//    Normal = normalize(vec3(0.0, 1.0, 0.0));
-//    // ÎÊÌâ£º·¨ÏßºãÎª (0,1,0)£¬Î´·´Ó³²¨ÀËÆğ·ü¡£
-//}
-//)";
-//
-//// Æ¬¶Î×ÅÉ«Æ÷
-//const char* fragmentShaderSource = R"(
-//#version 330 core
-//in vec3 FragPos;
-//in vec3 Normal;
-//out vec4 FragColor;
-//
-//uniform vec3 lightPos;
-//uniform vec3 viewPos;
-//
-//void main() {
-//    // »·¾³¹â
-//    vec3 ambient = 0.1 * vec3(0.0, 0.3, 0.6);
-//
-//    // Âş·´Éä
-//    vec3 norm = normalize(Normal);
-//    vec3 lightDir = normalize(lightPos - FragPos);
-//    float diff = max(dot(norm, lightDir), 0.0);
-//    vec3 diffuse = diff * vec3(0.0, 0.5, 1.0);
-//
-//    // ¾µÃæ·´Éä£¨¼òµ¥£©
-//    vec3 viewDir = normalize(viewPos - FragPos);
-//    vec3 reflectDir = reflect(-lightDir, norm);
-//    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-//    vec3 specular = spec * vec3(1.0, 1.0, 1.0);
-//
-//    vec3 result = ambient + diffuse + specular;
-//    FragColor = vec4(result, 0.8);
-//}
-//)";
-//
-//// --- Shader Compilation ---
-//// ×ÅÉ«Æ÷³ÌĞò´´½¨
-//GLuint createShaderProgram() {
-//    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-//    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-//    glCompileShader(vertexShader);
-//
-//    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-//    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-//    glCompileShader(fragmentShader);
-//
-//    GLuint program = glCreateProgram();
-//    glAttachShader(program, vertexShader);
-//    glAttachShader(program, fragmentShader);
-//    glLinkProgram(program);
-//
-//    glDeleteShader(vertexShader);
-//    glDeleteShader(fragmentShader);
-//    return program;
-//}
-//
-//// --- ³õÊ¼»¯Íø¸ñ ---
-//void initGrid() {
-//    std::vector<glm::vec3> vertices;
-//    std::vector<unsigned int> indices;
-//
-//    // Éú³É¶¥µã£¨Y=0£¬ºóĞø¶¯Ì¬¸üĞÂ£©
-//    for (int z = 0; z < GRID_HEIGHT; ++z) {
-//        for (int x = 0; x < GRID_WIDTH; ++x) {
-//            float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
-//            float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
-//            vertices.push_back(glm::vec3(worldX, 0.0f, worldZ));
-//        }
-//    }
-//
-//    // Éú³ÉË÷Òı£¨Èı½ÇĞÎ£©
-//    for (int z = 0; z < GRID_HEIGHT - 1; ++z) {
-//        for (int x = 0; x < GRID_WIDTH - 1; ++x) {
-//            unsigned int i = z * GRID_WIDTH + x;
-//            indices.push_back(i);
-//            indices.push_back(i + 1);
-//            indices.push_back(i + GRID_WIDTH);
-//
-//            indices.push_back(i + 1);
-//            indices.push_back(i + GRID_WIDTH + 1);
-//            indices.push_back(i + GRID_WIDTH);
-//        }
-//    }
-//
-//    // VAO/VBO/EBO
-//    glGenVertexArrays(1, &VAO);
-//    glGenBuffers(1, &VBO);
-//    glGenBuffers(1, &EBO);
-//
-//    glBindVertexArray(VAO);
-//
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_DYNAMIC_DRAW);
-//
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-//
-//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-//    glEnableVertexAttribArray(0);
-//
-//    glBindVertexArray(0);
-//}
-//
-//// --- Ë®Ãæ¸üĞÂ£¨ÓĞÏŞ²î·Ö£©---
-//void updateWater() {
-//    // ±ß½ç¹Ì¶¨Îª0
-//    for (int i = 1; i < GRID_HEIGHT - 1; ++i) {
-//        for (int j = 1; j < GRID_WIDTH - 1; ++j) {
-//            float laplacian =
-//                height[i - 1][j] + height[i + 1][j] +
-//                height[i][j - 1] + height[i][j + 1] - 4 * height[i][j];
-//
-//            float c2_dt2_dx2 = (WAVE_SPEED * WAVE_SPEED * TIME_STEP * TIME_STEP) / (GRID_SIZE * GRID_SIZE);
-//            float newH = 2 * height[i][j] - prev_height[i][j] + c2_dt2_dx2 * laplacian;
-//            newH *= DAMPING;
-//
-//            prev_height[i][j] = height[i][j];
-//            height[i][j] = newH;
-//        }
-//    }
-//
-//    // Êó±êÈÅ¶¯
-//    if (disturbX >= 0 && disturbY >= 0) {
-//        int x = disturbX;
-//        int y = disturbY;
-//        if (x >= 1 && x < GRID_WIDTH - 1 && y >= 1 && y < GRID_HEIGHT - 1) {
-//            height[y][x] += 2.0f;
-//        }
-//        disturbX = disturbY = -1; // Ò»´ÎÈÅ¶¯
-//    }
-//}
-//
-//// --- ¸üĞÂ VBO ¸ß¶È ---
-//void updateVertexBuffer() {
-//    std::vector<glm::vec3> tempVertices(GRID_WIDTH * GRID_HEIGHT);
-//    for (int z = 0; z < GRID_HEIGHT; ++z) {
-//        for (int x = 0; x < GRID_WIDTH; ++x) {
-//            float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
-//            float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
-//            float worldY = height[z][x] * 2.0f; // ·Å´ó²¨ÀË
-//            tempVertices[z * GRID_WIDTH + x] = glm::vec3(worldX, worldY, worldZ);
-//        }
-//    }
-//
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    glBufferSubData(GL_ARRAY_BUFFER, 0, tempVertices.size() * sizeof(glm::vec3), tempVertices.data());
-//}
-//
-//// --- ÉãÏñ»ú¿ØÖÆ ---
-//void processInput(GLFWwindow* window, float deltaTime) {
-//    float velocity = movementSpeed * deltaTime;
-//    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-//        cameraPos += velocity * cameraFront;
-//    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-//        cameraPos -= velocity * cameraFront;
-//    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-//        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
-//    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-//        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
-//}
-//
-//void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-//    if (firstMouse) {
-//        lastX = xpos;
-//        lastY = ypos;
-//        firstMouse = false;
-//    }
-//
-//    float xoffset = xpos - lastX;
-//    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-//
-//    lastX = xpos;
-//    lastY = ypos;
-//
-//    xoffset *= mouseSensitivity;
-//    yoffset *= mouseSensitivity;
-//
-//    yaw += xoffset;
-//    pitch += yoffset;
-//
-//    if (pitch > 89.0f) pitch = 89.0f;
-//    if (pitch < -89.0f) pitch = -89.0f;
-//
-//    glm::vec3 front;
-//    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-//    front.y = sin(glm::radians(pitch));
-//    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-//    cameraFront = glm::normalize(front);
-//}
-//
-//// Êó±ê¹öÂÖµ÷ÕûÒÆ¶¯ËÙ¶È
-//void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-//    movementSpeed += (float)yoffset;
-//    if (movementSpeed < 1.0f) movementSpeed = 1.0f;
-//    if (movementSpeed > 20.0f) movementSpeed = 20.0f;
-//}
-//
-//// Êó±êµã»÷ÈÅ¶¯Ë®Ãæ
-//void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-//	if (button == GLFW_MOUSE_BUTTON_RIGHT) { // ÓÒ¼ü¿ØÖÆÊÓ½Ç
-//        rightMousePressed = (action == GLFW_PRESS);
-//		// Éè¶¨¹â±êÄ£Ê½
-//        glfwSetInputMode(window, GLFW_CURSOR, 
-//            rightMousePressed ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-//    }
-//
-//    // ×ó¼üµã»÷£º´¥·¢²¨ÀË£¨¼ûµÚ¶ş²¿·Ö£©
-//    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-//        // Áô¿Õ£¬ÉÔºóÊµÏÖ¾«È·ÉäÏßÊ°È¡
-//    }
-//}
-//
-//// --- Main ---
-//int main() {
-//    glfwInit();
-//    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-//#ifdef __APPLE__
-//    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-//#endif
-//
-//    GLFWwindow* window = glfwCreateWindow(800, 800, "Height Field Water Simulation", nullptr, nullptr);
-//    if (!window) {
-//        std::cerr << "Failed to create GLFW window\n";
-//        return -1;
-//    }
-//    glfwMakeContextCurrent(window);
-//    glfwSetCursorPosCallback(window, mouse_callback);
-//    glfwSetScrollCallback(window, scroll_callback);
-//    glfwSetMouseButtonCallback(window, mouse_button_callback);
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-//
-//    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-//        std::cerr << "Failed to initialize GLAD\n";
-//        return -1;
-//    }
-//
-//    glEnable(GL_DEPTH_TEST);
-//    glViewport(0, 0, 800, 800);
-//
-//    shaderProgram = createShaderProgram();
-//    initGrid();
-//
-//    float lastFrame = 0.0f;
-//
-//    while (!glfwWindowShouldClose(window)) {
-//        float currentFrame = glfwGetTime();
-//        float deltaTime = currentFrame - lastFrame;
-//        lastFrame = currentFrame;
-//
-//        processInput(window, deltaTime);
-//        updateWater();
-//        updateVertexBuffer();
-//
-//        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
-//        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//
-//        glUseProgram(shaderProgram);
-//
-//        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-//        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
-//        glm::mat4 model = glm::mat4(1.0f);
-//
-//        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
-//        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
-//        unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
-//        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-//        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-//        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-//
-//        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(glm::vec3(10.0f, 20.0f, 10.0f)));
-//        glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(cameraPos));
-//
-//        glBindVertexArray(VAO);
-//        glDrawElements(GL_TRIANGLES, (GRID_WIDTH - 1) * (GRID_HEIGHT - 1) * 6, GL_UNSIGNED_INT, 0);
-//        glBindVertexArray(0);
-//
-//        glfwSwapBuffers(window);
-//        glfwPollEvents();
-//    }
-//
-//    glDeleteVertexArrays(1, &VAO);
-//    glDeleteBuffers(1, &VBO);
-//    glDeleteBuffers(1, &EBO);
-//    glDeleteProgram(shaderProgram);
-//
-//    glfwTerminate();
-//    return 0;
-//}
+ï»¿// water_heightfield.cpp
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <iostream>
+#include <vector>
+#include <cmath>
+
+// å®šä¹‰é¡¶ç‚¹ç»“æ„
+struct Vertex {
+    glm::vec3 Position;
+    glm::vec3 Normal;
+};
+
+// å®šä¹‰æ°´é¢ç½‘æ ¼åˆ†è¾¨ç‡ï¼š128Ã—128 ä¸ªé¡¶ç‚¹
+const int GRID_WIDTH = 128;  // ç½‘æ ¼å®½åº¦
+const int GRID_HEIGHT = 128; // ç½‘æ ¼é«˜åº¦
+const float GRID_SIZE = 1.0f; // æ¯ä¸ªæ ¼å­çš„ç‰©ç†å°ºå¯¸ï¼ˆç±³ï¼‰,ç”¨äºæ¸²æŸ“å’Œè®¡ç®—
+
+// æ³¢åŠ¨å‚æ•°
+const float DAMPING = 0.995f; // é˜»å°¼ç³»æ•°,æ¨¡æ‹Ÿèƒ½é‡æŸå¤±.æ¯å¸§å¯¹æ³¢æµªé«˜åº¦ä¹˜ä»¥è¯¥å€¼ï¼Œæ¨¡æ‹Ÿæ°´çš„ç²˜æ»é˜»åŠ›ï¼ˆèƒ½é‡è¡°å‡ï¼‰ã€‚å€¼è¶Šæ¥è¿‘ 1ï¼Œæ³¢æµªè¡°å‡è¶Šæ…¢ã€‚
+const float WAVE_SPEED = 2.0f; // æ³¢é€Ÿ,æ³¢åœ¨æ°´é¢ä¸Šä¼ æ’­çš„é€Ÿåº¦ï¼ˆå•ä½ï¼šç±³/ç§’ï¼‰
+const float TIME_STEP = 1.0f / 60.0f; // æ—¶é—´æ­¥é•¿,æ¨¡æ‹Ÿå¸§ç‡60FPS
+
+// æ°´é¢é«˜åº¦åœº
+float height[GRID_HEIGHT][GRID_WIDTH] = { 0 }; // å½“å‰æ°´é¢é«˜åº¦
+float prev_height[GRID_HEIGHT][GRID_WIDTH] = { 0 }; // ä¸Šä¸€å¸§é«˜åº¦
+
+// æ¸²æŸ“æ•°æ®
+GLuint VAO, VBO, EBO; // é¡¶ç‚¹æ•°ç»„å¯¹è±¡ï¼ˆå°è£…é¡¶ç‚¹å±æ€§ï¼‰ï¼Œé¡¶ç‚¹ç¼“å†²å¯¹è±¡ï¼ˆå‚¨å­˜é¡¶ç‚¹ä½ç½®ï¼‰ï¼Œç´¢å¼•ç¼“å†²å¯¹è±¡ï¼ˆå­˜å‚¨ä¸‰è§’å½¢ç´¢å¼•ï¼‰
+GLuint shaderProgram; // ç€è‰²å™¨ç¨‹åº
+
+// æ‘„åƒæœº
+glm::vec3 cameraPos = glm::vec3(0.0f, 20.0f, 30.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f); 
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+// é¼ æ ‡æ§åˆ¶
+bool firstMouse = true; // æ˜¯å¦é¦–æ¬¡ç§»åŠ¨é¼ æ ‡
+float yaw = -90.0f, pitch = -20.0f;
+float lastX = 400, lastY = 300;
+float movementSpeed = 5.0f; // æ‘„åƒæœºç§»åŠ¨é€Ÿåº¦
+float mouseSensitivity = 0.1f; // é¼ æ ‡çµæ•åº¦
+bool rightMousePressed = false; // å³é”®æŒ‰ä¸‹æ ‡å¿—
+
+// é¼ æ ‡æ‰°åŠ¨ä½ç½®
+int disturbX = -1, disturbY = -1; // é¼ æ ‡æ‰°åŠ¨ä½ç½®ï¼Œ-1è¡¨ç¤ºæ— æ‰°åŠ¨
+
+// --- Shader Sources ---
+// é¡¶ç‚¹ç€è‰²å™¨
+const char* vertexShaderSource = R"( 
+#version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+out vec3 FragPos;
+out vec3 Normal;
+
+void main() {
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    FragPos = worldPos.xyz;
+    Normal = mat3(transpose(inverse(model))) * aNormal; // æ³•çº¿å˜æ¢ï¼ˆæ­¤å¤„ model æ˜¯å•ä½é˜µï¼Œå¯ç®€åŒ–ï¼‰
+    gl_Position = projection * view * worldPos;
+}
+)";
+
+// ç‰‡æ®µç€è‰²å™¨
+const char* fragmentShaderSource = R"(
+#version 330 core
+in vec3 FragPos;
+in vec3 Normal;
+out vec4 FragColor;
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+
+void main() {
+    // ç¯å¢ƒå…‰
+    vec3 ambient = 0.1 * vec3(0.0, 0.3, 0.6);
+
+    // æ¼«åå°„
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * vec3(0.0, 0.5, 1.0);
+
+    // é•œé¢åå°„ï¼ˆç®€å•ï¼‰
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = spec * vec3(1.0, 1.0, 1.0);
+
+    vec3 result = ambient + diffuse + specular;
+    FragColor = vec4(result, 0.8);
+}
+)";
+
+// --- Shader Compilation ---
+// ç€è‰²å™¨ç¨‹åºåˆ›å»º
+GLuint createShaderProgram() {
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    glLinkProgram(program);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    return program;
+}
+
+// --- åˆå§‹åŒ–ç½‘æ ¼ ---
+#include <cstddef> // for offsetof
+
+void initGrid() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    // ç”Ÿæˆé¡¶ç‚¹
+    for (int z = 0; z < GRID_HEIGHT; ++z) {
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+            float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
+            float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
+            vertices.push_back({ glm::vec3(worldX, 0, worldZ), glm::vec3(0, 1, 0) });
+        }
+    }
+
+    // ç”Ÿæˆç´¢å¼•ï¼ˆä¸‰è§’å½¢ï¼‰
+    for (int z = 0; z < GRID_HEIGHT - 1; ++z) {
+        for (int x = 0; x < GRID_WIDTH - 1; ++x) {
+            unsigned int i = z * GRID_WIDTH + x;
+            indices.push_back(i);
+            indices.push_back(i + 1);
+            indices.push_back(i + GRID_WIDTH);
+
+            indices.push_back(i + 1);
+            indices.push_back(i + GRID_WIDTH + 1);
+            indices.push_back(i + GRID_WIDTH);
+        }
+    }
+
+    // åˆ›å»º VAO/VBO/EBO
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    // ç»‘å®šå¹¶ä¸Šä¼ é¡¶ç‚¹æ•°æ®ï¼ˆPosition + Normalï¼‰
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
+
+    // ç»‘å®šç´¢å¼•ç¼“å†²
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+    // å¯ç”¨é¡¶ç‚¹å±æ€§ 0: Position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // å¯ç”¨é¡¶ç‚¹å±æ€§ 1: Normal
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+}
+
+// --- æ°´é¢æ›´æ–°ï¼ˆæœ‰é™å·®åˆ†ï¼‰---
+void updateWater() {
+    // è¾¹ç•Œå›ºå®šä¸º0
+    for (int i = 1; i < GRID_HEIGHT - 1; ++i) {
+        for (int j = 1; j < GRID_WIDTH - 1; ++j) {
+            float laplacian =
+                height[i - 1][j] + height[i + 1][j] +
+                height[i][j - 1] + height[i][j + 1] - 4 * height[i][j];
+
+            float c2_dt2_dx2 = (WAVE_SPEED * WAVE_SPEED * TIME_STEP * TIME_STEP) / (GRID_SIZE * GRID_SIZE);
+            float newH = 2 * height[i][j] - prev_height[i][j] + c2_dt2_dx2 * laplacian;
+            newH *= DAMPING;
+
+            prev_height[i][j] = height[i][j];
+            height[i][j] = newH;
+        }
+    }
+
+    // é¼ æ ‡æ‰°åŠ¨
+    if (disturbX >= 0 && disturbY >= 0) {
+        int x = disturbX;
+        int y = disturbY;
+        if (x >= 1 && x < GRID_WIDTH - 1 && y >= 1 && y < GRID_HEIGHT - 1) {
+            height[y][x] += 2.0f;
+        }
+        disturbX = disturbY = -1; // ä¸€æ¬¡æ‰°åŠ¨
+    }
+}
+
+// --- æ›´æ–° VBO é«˜åº¦ ---
+void updateVertexBuffer() {
+    std::vector<Vertex> tempVertices(GRID_WIDTH * GRID_HEIGHT);
+    for (int z = 0; z < GRID_HEIGHT; ++z) {
+        for (int x = 0; x < GRID_WIDTH; ++x) {
+            float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
+            float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
+            float worldY = height[z][x] * 3.0f; // ğŸ‘ˆ æ”¾å¤§åˆ° 3.0f å¢å¼ºæ³¢æµª
+            tempVertices[z * GRID_WIDTH + x].Position = glm::vec3(worldX, worldY, worldZ);
+
+            // è®¡ç®—æ³•çº¿ï¼šç”¨ä¸­å¿ƒå·®åˆ†
+            float dx = 0, dz = 0;
+            if (x > 0 && x < GRID_WIDTH - 1)
+                dx = (height[z][x - 1] - height[z][x + 1]) * 3.0f / (2 * GRID_SIZE);
+            if (z > 0 && z < GRID_HEIGHT - 1)
+                dz = (height[z - 1][x] - height[z + 1][x]) * 3.0f / (2 * GRID_SIZE);
+
+            glm::vec3 normal = glm::normalize(glm::vec3(-dx, 1.0f, -dz));
+            tempVertices[z * GRID_WIDTH + x].Normal = normal;
+        }
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, tempVertices.size() * sizeof(Vertex), tempVertices.data());
+}
+
+// --- æ‘„åƒæœºæ§åˆ¶ ---
+void processInput(GLFWwindow* window, float deltaTime) {
+    float velocity = movementSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += velocity * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= velocity * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
+}
+
+// é¼ æ ‡ç§»åŠ¨æ§åˆ¶è§†è§’
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (!rightMousePressed) return;
+
+	if (firstMouse) { // åˆæ¬¡è¿›å…¥
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    xoffset *= mouseSensitivity;
+    yoffset *= mouseSensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(front);
+}
+
+// é¼ æ ‡æ»šè½®è°ƒæ•´ç§»åŠ¨é€Ÿåº¦
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    movementSpeed += (float)yoffset;
+    if (movementSpeed < 1.0f) movementSpeed = 1.0f;
+    if (movementSpeed > 20.0f) movementSpeed = 20.0f;
+}
+
+// å°†é¼ æ ‡å±å¹•åæ ‡è½¬æ¢ä¸ºä¸–ç•Œåæ ‡
+glm::vec3 getMouseWorldPos(GLFWwindow* window, double mouseX, double mouseY) {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    // NDC åæ ‡
+    float ndcX = (2.0f * mouseX / width) - 1.0f;
+    float ndcY = 1.0f - (2.0f * mouseY / height);
+
+    // æŠ•å½±å’Œè§†å›¾çŸ©é˜µ
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)width / height, 0.1f, 100.0f);
+    glm::mat4 invVP = glm::inverse(proj * view);
+
+    // è¿‘å¹³é¢å’Œè¿œå¹³é¢ä¸Šçš„ç‚¹
+    glm::vec4 nearPoint = invVP * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+    glm::vec4 farPoint = invVP * glm::vec4(ndcX, ndcY, 1.0f, 1.0f);
+
+    nearPoint /= nearPoint.w;
+    farPoint /= farPoint.w;
+
+    glm::vec3 rayOrigin = cameraPos;
+    glm::vec3 rayDir = glm::normalize(glm::vec3(farPoint) - glm::vec3(nearPoint));
+
+    // å°„çº¿ä¸ Y=0 å¹³é¢æ±‚äº¤
+    float t = (0.0f - rayOrigin.y) / rayDir.y;
+    if (t < 0) return glm::vec3(0); // å°„çº¿å‘ä¸‹æ‰æœ‰æ•ˆ
+
+    glm::vec3 hitPoint = rayOrigin + t * rayDir;
+    return hitPoint;
+}
+
+// é¼ æ ‡ç‚¹å‡»æ‰°åŠ¨æ°´é¢
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+	if (button == GLFW_MOUSE_BUTTON_RIGHT) { // å³é”®æ§åˆ¶è§†è§’
+        rightMousePressed = (action == GLFW_PRESS);
+		// è®¾å®šå…‰æ ‡æ¨¡å¼
+        glfwSetInputMode(window, GLFW_CURSOR, 
+            rightMousePressed ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+
+    // å·¦é”®ç‚¹å‡»ï¼šè§¦å‘æ³¢æµªï¼ˆè§ç¬¬äºŒéƒ¨åˆ†ï¼‰
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        glm::vec3 worldPos = getMouseWorldPos(window, xpos, ypos);
+
+        // è½¬æ¢ä¸ºç½‘æ ¼ç´¢å¼•
+        int gridX = (int)std::round(worldPos.x / GRID_SIZE + GRID_WIDTH / 2.0f);
+        int gridY = (int)std::round(worldPos.z / GRID_SIZE + GRID_HEIGHT / 2.0f); // æ³¨æ„ï¼šZ å¯¹åº”ç½‘æ ¼çš„ Y
+
+        // è¾¹ç•Œæ£€æŸ¥
+        if (gridX >= 1 && gridX < GRID_WIDTH - 1 && gridY >= 1 && gridY < GRID_HEIGHT - 1) {
+            disturbX = gridX;
+            disturbY = gridY;
+        }
+    }
+}
+
+// --- Main ---
+int main() {
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    GLFWwindow* window = glfwCreateWindow(800, 800, "Height Field Water Simulation", nullptr, nullptr);
+    if (!window) {
+        std::cerr << "Failed to create GLFW window\n";
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD\n";
+        return -1;
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    glViewport(0, 0, 800, 800);
+
+    shaderProgram = createShaderProgram();
+    initGrid();
+
+    float lastFrame = 0.0f;
+
+    while (!glfwWindowShouldClose(window)) {
+        float currentFrame = glfwGetTime();
+        float deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        processInput(window, deltaTime);
+        updateWater();
+        updateVertexBuffer();
+
+        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUseProgram(shaderProgram);
+
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 800.0f, 0.1f, 100.0f);
+        glm::mat4 model = glm::mat4(1.0f);
+
+        unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
+        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+        unsigned int projLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(glm::vec3(10.0f, 20.0f, 10.0f)));
+        glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(cameraPos));
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, (GRID_WIDTH - 1) * (GRID_HEIGHT - 1) * 6, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteProgram(shaderProgram);
+
+    glfwTerminate();
+    return 0;
+}
