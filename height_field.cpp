@@ -21,7 +21,7 @@ const float GRID_SIZE = 1.0f; // 每个格子的物理尺寸（米）,用于渲�
 
 // 波动参数
 const float DAMPING = 0.995f; // 阻尼系数,模拟能量损失.每帧对波浪高度乘以该值，模拟水的粘滞阻力（能量衰减）。值越接近 1，波浪衰减越慢。
-const float WAVE_SPEED = 2.0f; // 波速,波在水面上传播的速度（单位：米/秒）
+const float WAVE_SPEED = 2.5f; // 波速,波在水面上传播的速度（单位：米/秒）
 const float TIME_STEP = 1.0f / 60.0f; // 时间步长,模拟帧率60FPS
 
 // 水面高度场
@@ -81,22 +81,22 @@ uniform vec3 viewPos;
 
 void main() {
     // 环境光
-    vec3 ambient = 0.1 * vec3(0.0, 0.3, 0.6);
+    vec3 ambient = 0.2 * vec3(0.1, 0.3, 0.6);   // 稍亮
 
     // 漫反射
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(lightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * vec3(0.0, 0.5, 1.0);
+    vec3 diffuse = diff * vec3(0.2, 0.6, 1.0);   // 更鲜艳的蓝色
 
     // 镜面反射（简单）
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = spec * vec3(1.0, 1.0, 1.0);
+    vec3 specular = spec * vec3(1.0, 1.0, 1.0);  // 白色高光
 
     vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, 0.8);
+    FragColor = vec4(result, 1.0);               //  不透明！
 }
 )";
 
