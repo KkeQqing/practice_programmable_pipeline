@@ -130,6 +130,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SPH.cpp" />
     <ClCompile Include="stable_fluids.cpp" />
+    <ClCompile Include="SWE.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -138,6 +139,8 @@
   <ImportGroup Label="ExtensionTargets">
     <Import Project="packages\glfw.3.4.0\build\native\glfw.targets" Condition="Exists('packages\glfw.3.4.0\build\native\glfw.targets')" />
     <Import Project="packages\glm.1.0.2\build\native\glm.targets" Condition="Exists('packages\glm.1.0.2\build\native\glm.targets')" />
+    <Import Project="packages\libfftw.redist.3.3.4\build\native\libfftw.redist.targets" Condition="Exists('packages\libfftw.redist.3.3.4\build\native\libfftw.redist.targets')" />
+    <Import Project="packages\libfftw.3.3.4\build\native\libfftw.targets" Condition="Exists('packages\libfftw.3.3.4\build\native\libfftw.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -145,5 +148,7 @@
     </PropertyGroup>
     <Error Condition="!Exists('packages\glfw.3.4.0\build\native\glfw.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\glfw.3.4.0\build\native\glfw.targets'))" />
     <Error Condition="!Exists('packages\glm.1.0.2\build\native\glm.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\glm.1.0.2\build\native\glm.targets'))" />
+    <Error Condition="!Exists('packages\libfftw.redist.3.3.4\build\native\libfftw.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\libfftw.redist.3.3.4\build\native\libfftw.redist.targets'))" />
+    <Error Condition="!Exists('packages\libfftw.3.3.4\build\native\libfftw.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\libfftw.3.3.4\build\native\libfftw.targets'))" />
   </Target>
 </Project>
