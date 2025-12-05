@@ -50,15 +50,15 @@ int disturbX = -1, disturbY = -1; // 鼠标扰动位置，-1表示无扰动
 // --- Shader Sources ---
 // 顶点着色器
 const char* vertexShaderSource = R"( 
-#version 330 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
+#version 330 core 
+layout (location = 0) in vec3 aPos; 
+layout (location = 1) in vec3 aNormal; 
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 model; // 模型矩阵（此处为单位阵）
+uniform mat4 view; // 视图矩阵
+uniform mat4 projection; // 投影矩阵
 
-out vec3 FragPos;
+out vec3 FragPos; 
 out vec3 Normal;
 
 void main() {
@@ -89,55 +89,57 @@ void main() {
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * vec3(0.2, 0.6, 1.0);   // 更鲜艳的蓝色
 
-    // 镜面反射（简单）
+    // 镜面反射
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = spec * vec3(1.0, 1.0, 1.0);  // 白色高光
 
-    vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, 1.0);               //  不透明！
+    vec3 result = ambient + diffuse + specular; // 最终颜色
+    FragColor = vec4(result, 1.0);               //  不透明
 }
 )";
 
 // --- Shader Compilation ---
 // 着色器程序创建
 GLuint createShaderProgram() {
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER); // 创建顶点着色器
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL); // 设置着色器源码
+	glCompileShader(vertexShader); // 编译顶点着色器
 
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
 
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
+	GLuint program = glCreateProgram(); // 创建着色器程序
+	glAttachShader(program, vertexShader); // 附加顶点着色器
+	glAttachShader(program, fragmentShader); // 附加片段着色器
+	glLinkProgram(program); // 链接着色器程序
 
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+	glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader); 
     return program;
 }
 
 // --- 初始化网格 ---
 #include <cstddef> // for offsetof
 
+// 初始化水面网格
 void initGrid() {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
+	std::vector<Vertex> vertices;// 顶点数据
+	std::vector<unsigned int> indices; // 索引数据
 
     // 生成顶点
     for (int z = 0; z < GRID_HEIGHT; ++z) {
         for (int x = 0; x < GRID_WIDTH; ++x) {
             float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
             float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
-            vertices.push_back({ glm::vec3(worldX, 0, worldZ), glm::vec3(0, 1, 0) });
+			vertices.push_back({ glm::vec3(worldX, 0, worldZ), glm::vec3(0, 1, 0) }); // 初始法线向上
         }
     }
 
     // 生成索引（三角形）
+    // 网格单元数量 = (W−1)×(H−1)
     for (int z = 0; z < GRID_HEIGHT - 1; ++z) {
         for (int x = 0; x < GRID_WIDTH - 1; ++x) {
             unsigned int i = z * GRID_WIDTH + x;
@@ -200,7 +202,7 @@ void updateWater() {
         int x = disturbX;
         int y = disturbY;
         if (x >= 1 && x < GRID_WIDTH - 1 && y >= 1 && y < GRID_HEIGHT - 1) {
-            height[y][x] += 2.0f;
+			height[y][x] += 0.2f; // 扰动幅度
         }
         disturbX = disturbY = -1; // 一次扰动
     }
