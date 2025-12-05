@@ -184,7 +184,7 @@ void updateWater() {
     // 边界固定为0
     for (int i = 1; i < GRID_HEIGHT - 1; ++i) {
         for (int j = 1; j < GRID_WIDTH - 1; ++j) {
-            float laplacian =
+			float laplacian = // 拉普拉斯算子
                 height[i - 1][j] + height[i + 1][j] +
                 height[i][j - 1] + height[i][j + 1] - 4 * height[i][j];
 
@@ -215,7 +215,7 @@ void updateVertexBuffer() {
         for (int x = 0; x < GRID_WIDTH; ++x) {
             float worldX = (x - GRID_WIDTH / 2.0f) * GRID_SIZE;
             float worldZ = (z - GRID_HEIGHT / 2.0f) * GRID_SIZE;
-            float worldY = height[z][x] * 3.0f; // 👈 放大到 3.0f 增强波浪
+			float worldY = height[z][x] * 3.0f; // 放大高度以便观察
             tempVertices[z * GRID_WIDTH + x].Position = glm::vec3(worldX, worldY, worldZ);
 
             // 计算法线：用中心差分
@@ -258,7 +258,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     }
 
     float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+	float yoffset = lastY - ypos; // 反转 Y 轴
 
     lastX = xpos;
     lastY = ypos;
