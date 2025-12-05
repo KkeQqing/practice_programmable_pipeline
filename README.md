@@ -23,3 +23,19 @@ VBO 是一块 GPU 显存，用于存储顶点数据（如位置、法线、颜�
 哪些 VBO 被绑定到哪些 attribute slot（如 location=0,1...）
 每个 attribute 的格式（如 vec3、步长 stride、偏移 offset）
 当前绑定的 EBO（索引缓冲）
+
+
+拉普拉斯算子（Laplacian）
+cpp
+编辑
+float laplacian =
+    height[i - 1][j] + height[i + 1][j] +
+    height[i][j - 1] + height[i][j + 1] - 4 * height[i][j];
+✅ 物理意义：
+这是对 二维拉普拉斯算子 ∇²h 的离散近似，表示当前点与其四个邻居的高度差总和。
+
+如果周围比中心高 → laplacian > 0 → 中心会被“推高”
+如果周围比中心低 → laplacian < 0 → 中心会“下陷”
+📌 这是波动传播的核心驱动力！
+
+
